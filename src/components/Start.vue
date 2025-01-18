@@ -110,10 +110,11 @@
           <div v-if="currentQuestion.freeText">
             <div class="input-container">
               <input
-                v-if="['Q11', 'Q12b'].includes(currentQuestion.id)"
+                v-if="['Q2'].includes(currentQuestion.id)"
                 v-model="freeTextAnswer"
                 class="form-control"
                 type="number"
+                min="1"
                 :placeholder="
                   currentQuestion.freeTextPlaceholder ||
                   'Votre réponse (nombres uniquement)'
@@ -180,7 +181,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { db } from "../firebaseConfig";
 import { collection, getDocs, addDoc } from "firebase/firestore";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -214,7 +215,7 @@ const pdfUrl = ref("/Plan.pdf");
 const surveyCollectionRef = collection(db, "TrappesVoiture");
 const counterDocRef = doc(db, "counterBusTrain", "surveyCounter");
 const gareSelections = ref({});
-const savedPoste = ref(null);
+const savedPoste = ref(localStorage.getItem("savedPoste"));
 const firstQuestion = questions.find((q) => q.id === "Poste");
 
 const handleGareSelection = () => {
@@ -340,9 +341,39 @@ const startSurvey = () => {
     second: "2-digit",
   });
   currentStep.value = "survey";
-  currentQuestionIndex.value = 0;
+  questionPath.value = []; // Reset question path
+
+  // Check for saved poste
+  const savedPosteValue = localStorage.getItem("savedPoste");
+  if (savedPosteValue) {
+    answers.value["Poste"] = savedPosteValue;
+    // Find the index of the first non-Poste question
+    const firstQuestionIndex = questions.findIndex((q) => q.id !== "Poste");
+    currentQuestionIndex.value = firstQuestionIndex;
+    // Add the first question to the path
+    questionPath.value.push(questions[firstQuestionIndex].id);
+  } else {
+    currentQuestionIndex.value = 0; // Start with poste question
+    questionPath.value.push(questions[0].id);
+  }
+
   isSurveyComplete.value = false;
 };
+
+// Add this method to handle page reload
+const handleBeforeUnload = () => {
+  localStorage.removeItem("savedPoste");
+};
+
+// Add this to your onMounted hook
+onMounted(() => {
+  window.addEventListener("beforeunload", handleBeforeUnload);
+});
+
+// Add cleanup in onUnmounted
+onUnmounted(() => {
+  window.removeEventListener("beforeunload", handleBeforeUnload);
+});
 
 // Add this near the top of the <script setup> section
 const logAnswers = () => {
@@ -353,6 +384,11 @@ const selectAnswer = (option) => {
   if (currentQuestion.value) {
     const questionId = currentQuestion.value.id;
     answers.value[questionId] = option.id;
+
+    // Save poste to localStorage when it's answered
+    if (questionId === "Poste") {
+      localStorage.setItem("savedPoste", option.id);
+    }
 
     // Debug log all answers
     console.log(
@@ -511,8 +547,9 @@ const resetSurvey = () => {
   currentStep.value = "start";
   startDate.value = "";
   answers.value = {};
-  currentQuestionIndex.value = 0;
+  questionPath.value = [];
   isSurveyComplete.value = false;
+  // Don't reset currentQuestionIndex here as it will be set in startSurvey
 };
 
 const getDocCount = async () => {
