@@ -32,7 +32,6 @@ export const questions = [
 			{ id: 5, text: "Vous travaillez dans le quartier", next: "Q4" },
 			{ id: 6, text: "Vous habitez dans le quartier", next: "Q4" },
 			{ id: 7, text: "Vous vous rendez dans un commerce/bureau/service/école... du quartier", next: "Q4" },
-			{ id: 8, text: "En 2 roues Motorisé (Moto, scooter...)", next: "Q4" },
 			{ id: 9, text: "Vous rendez visite à quelqu'un dans le quartier", next: "Q4" },
 		],
 	},
